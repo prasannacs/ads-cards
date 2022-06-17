@@ -31,7 +31,7 @@ router.get("/", function (req, res) {
 
 router.get("/request-token", function (req, res) {
     console.log('-- request-token -- ',req.query.path);
-    let oauth_callback_url = 'http://127.0.0.1:3000';
+    let oauth_callback_url = config.oauth_callback_url;
     if(req.query.path != undefined)
         oauth_callback_url = oauth_callback_url + '/' + req.query.path;
     twitterAPI.post({

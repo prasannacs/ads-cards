@@ -32,7 +32,7 @@ router.get("/", function (req, res) {
         secret: config.adsAccount.tokenSecret
     });
     let cardsData = [];
-    twitterAPI.get('https://ads-api.twitter.com/10/accounts/18ce55g3aw0/cards/website', function (err, results, tweets) {
+    twitterAPI.get(config.adsAccount.adsAPI.websiteCards, function (err, results, tweets) {
 
         let cards = JSON.parse(results.body);
         //console.log('medias ', medias);
@@ -52,7 +52,7 @@ router.get("/", function (req, res) {
 
 router.delete("/", function (req, res) {
     console.log('-- DELETE Cards Services -- ', req.body.cardId);
-    let url = 'https://ads-api.twitter.com/10/accounts/18ce55g3aw0/cards/website/' + req.body.cardId
+    let url = config.adsAccount.adsAPI.websiteCards + req.body.cardId
     twitterAPI.delete(url, function (err, results, tweets) {
         res.send(results.body);
     });
@@ -61,7 +61,7 @@ router.delete("/", function (req, res) {
 router.post("/tweet", function (req, res) {
     console.log('Tweet Post ',req.body)
     var tweetOptions = {
-        url: 'https://api.twitter.com/1.1/statuses/update.json',
+        url: config.v11API.tweet,
         json: true,
         form: { 'status': req.body.tweet, 'card_uri': req.body.cardURI },
     }
@@ -93,7 +93,7 @@ router.post("/create-card", function (req, res) {
 async function createCard(cardForm) {
     console.log('CardForm ', cardForm)
     let cardOptions = {
-        url: 'https://ads-api.twitter.com/10/accounts/18ce55g3aw0/cards/website',
+        url: config.adsAccount.adsAPI.websiteCards,
         json: true,
         form: { 'name': cardForm.cardName, 'website_title': cardForm.websiteTitle, 'website_url': cardForm.websiteURL, 'media_key': cardForm.mediaKey }
     }

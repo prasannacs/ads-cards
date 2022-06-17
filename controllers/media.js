@@ -34,7 +34,7 @@ router.get("/", function (req, res) {
 router.get("/library", function (req, res) {
     console.log('-- Media Library Services -- ',req.query.user_id);
     let mediaData = [];
-    twitterAPI.get('https://ads-api.twitter.com/10/accounts/18ce55g3aw0/media_library', function (err, results, tweets) {
+    twitterAPI.get(config.adsAccount.adsAPI.mediaLibrary, function (err, results, tweets) {
         let medias = JSON.parse(results.body);
         //console.log('medias ', medias);
         dataStore.getMediaKeys(req.query.user_id).then((mediaKeys)=> {
@@ -73,7 +73,7 @@ async function updateUserMediaMap(userId, mediaKey)  {
 async function uploadMediaLib(mediaKey, fileName) {
     return new Promise( function (resolve, reject)  {
         let options = {
-            url: 'https://ads-api.twitter.com/11/accounts/18ce55g3aw0/media_library',
+            url: config.adsAccount.adsAPI.mediaLibrary,
             json: true,
             headers: { "Content-Type": "application/json"},
             form: { 'media_key': mediaKey, 'file_name': fileName, 'name': 'Game Cards' }
@@ -98,7 +98,7 @@ async function uploadMedia(uploadedFile) {
 
     return new Promise(function (resolve, reject) {
         let options = {
-            url: 'https://upload.twitter.com/1.1/media/upload.json',
+            url: config.v11API.media,
             json: true,
             headers: { "Content-Type": "application/octet-stream", "Content-Transfer-Encoding": "base64" },
             form: { 'media_category': 'tweet_image', 'media_data': encodedFile }
