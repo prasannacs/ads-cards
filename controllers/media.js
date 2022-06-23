@@ -6,6 +6,7 @@ const queryString = require('query-string');
 const axios = require("axios").default;
 const fs = require('fs').promises;
 const dataStore = require('.././services/dataStore.js');
+const cloudStorage = require('.././services/cloudStorage.js');
 
 const router = express.Router();
 
@@ -56,6 +57,7 @@ router.post("/upload", function (req, res) {
         console.log('-- Media Upload Services -- ', req.files, ' Body ',req.body);
     let uploadedFile = req.files.File;
     uploadedFile.mv('./uploads/' + uploadedFile.name);
+    // cloudStorage.uploadToGCS(uploadedFile.name, uploadedFile.data);
     uploadMedia(uploadedFile).then((media) => {
         uploadMediaLib(media.media_key, uploadedFile.name).then((results) => {
             updateUserMediaMap(req.body.userId,media.media_key);
@@ -94,8 +96,6 @@ async function uploadMediaLib(mediaKey, fileName) {
 
 async function uploadMedia(uploadedFile) {
     let encodedFile = await fs.readFile('./uploads/' + uploadedFile.name, { encoding: 'base64' });
-    // console.log('encodedFile ',encodedFile)
-
     return new Promise(function (resolve, reject) {
         let options = {
             url: config.v11API.media,
