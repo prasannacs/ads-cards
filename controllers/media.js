@@ -56,7 +56,7 @@ router.post("/upload", function (req, res) {
     if (req.files)
         console.log('-- Media Upload Services -- ', req.files, ' Body ',req.body);
     let uploadedFile = req.files.File;
-    uploadedFile.mv('./uploads/' + uploadedFile.name);
+    uploadedFile.mv(config.fileStorageDir + uploadedFile.name);
     // cloudStorage.uploadToGCS(uploadedFile.name, uploadedFile.data);
     uploadMedia(uploadedFile).then((media) => {
         uploadMediaLib(media.media_key, uploadedFile.name).then((results) => {
@@ -95,7 +95,7 @@ async function uploadMediaLib(mediaKey, fileName) {
 }
 
 async function uploadMedia(uploadedFile) {
-    let encodedFile = await fs.readFile('./uploads/' + uploadedFile.name, { encoding: 'base64' });
+    let encodedFile = await fs.readFile(config.fileStorageDir + uploadedFile.name, { encoding: 'base64' });
     return new Promise(function (resolve, reject) {
         let options = {
             url: config.v11API.media,
