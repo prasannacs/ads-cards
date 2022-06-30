@@ -32,21 +32,42 @@ router.get("/", function (req, res) {
         secret: config.adsAccount.tokenSecret
     });
     let cardsData = [];
-    twitterAPI.get(config.adsAccount.adsAPI.websiteCards, function (err, results, tweets) {
+    let adsURL = config.adsAccount.adsAPI.carouselCards;
+    if( req.query.discriminator)    {
+        adsURL = config.adsAccount.adsAPI.websiteCards;
+    }
+    twitterAPI.get(adsURL, function (err, results, tweets) {
 
         let cards = JSON.parse(results.body);
         //console.log('medias ', medias);
-        dataStore.getMediaKeys(req.query.user_id).then((mediaKeys)=> {
-            console.log('m keys --> ',mediaKeys)
-            cards.data.forEach((element)=>  {
-                if(mediaKeys.includes(element.media_key))   {
+        dataStore.getMediaKeys(req.query.user_id).then((mediaKeys) => {
+            if( req.query.discriminator)    {
+            console.log('m keys --> ', mediaKeys)
+            cards.data.forEach((element) => {
+                if (mediaKeys.includes(element.media_key)) {
                     cardsData.push(element);
                 }
             })
-            console.log('cardsData ',cardsData);
+            console.log('cardsData ', cardsData);
             res.send(cardsData);
-    
-        })    
+        }else {
+            cards.data.forEach((element) => {
+                for(let i=0; i< element.components[0].media_keys.length; i++ ) {
+                    if( mediaKeys.includes(element.components[0].media_keys[i] )  )  {
+                        cardsData.push(element);
+                        break;
+                    }
+                }
+                // element.components[0].media_keys.forEach((mkey)    =>  {
+                //     if(mediaKeys.includes(mkey))    {
+                //         cardsData.push(element);
+                //     }
+                // })
+            })
+            console.log('cardsData ', cardsData);
+            res.send(cardsData);
+        }
+        })
     });
 });
 
@@ -59,7 +80,7 @@ router.delete("/", function (req, res) {
 });
 
 router.post("/tweet", function (req, res) {
-    console.log('Tweet Post ',req.body)
+    console.log('Tweet Post ', req.body)
     var tweetOptions = {
         url: config.v11API.tweet,
         json: true,
@@ -72,7 +93,7 @@ router.post("/tweet", function (req, res) {
     twitterAPI.post(tweetOptions, function (error, response, results) {
         if (error)
             console.log('Twitter error ', error);
-        if (response)   {
+        if (response) {
             console.log('Twitter response ', response.body);
             res.send(response.body);
         }
@@ -115,6 +136,59 @@ async function createCard(cardForm) {
             }
         })
     });
+}
+
+router.post("/create-carousel", function (req, res) {
+    console.log('-- Create Carousel Cards Services -- ', req.body);
+    createCarouselAxios(req.body).then((result) => {
+        res.send({ 'card_uri': result.data.card_uri });
+    }).catch(function (error) {
+        res.send({ 'error': error })
+    })
+});
+
+async function createCarouselAxios(media) {
+    var data = JSON.stringify({
+        "name": media.name,
+        "components": [
+            {
+                "type": "SWIPEABLE_MEDIA",
+                "media_keys": media.media_keys,
+            },
+            {
+                "type": "DETAILS",
+                "title": media.title,
+                "destination": {
+                    "type": "WEBSITE",
+                    "url": media.url
+                }
+            }
+        ]
+    });
+
+    let auth_header = 'OAuth oauth_consumer_key=' + config.adsAccount.consumerKey + ',oauth_token=' + config.adsAccount.tokenKey + ',oauth_signature_method="HMAC-SHA1",oauth_timestamp="1656521901",oauth_nonce="ftWGbHtNUdu",oauth_version="1.0",oauth_signature="Ku1UEZuMZKAz4Rh4edwSxOSJzD0%3D"';
+
+    var axiosConfig = {
+        method: 'post',
+        url: config.adsAccount.adsAPI.carouselCards,
+        headers: {
+            'Authorization': auth_header,
+            'Content-Type': 'application/json'
+        },
+        data: data
+    };
+
+    return new Promise(function (resolve, reject)   {
+        axios(axiosConfig)
+        .then(function (response) {
+            resolve(response.data);
+        })
+        .catch(function (error) {
+            console.log(error);
+            reject(error);
+        });
+    });
+
 }
 
 module.exports = router
