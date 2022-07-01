@@ -7,6 +7,7 @@ const axios = require("axios").default;
 const fs = require('fs').promises;
 const dataStore = require('.././services/dataStore.js');
 const cloudStorage = require('.././services/cloudStorage.js');
+const utils = require('.././services/utils.js');
 
 const router = express.Router();
 
@@ -33,51 +34,58 @@ router.get("/", function (req, res) {
 });
 
 router.get("/library", function (req, res) {
-    console.log('-- Media Library Services -- ',req.query.user_id);
+    console.log('-- Media Library Services -- ', req.query.user_id);
     let mediaData = [];
     twitterAPI.get(config.adsAccount.adsAPI.mediaLibrary, function (err, results, tweets) {
         let medias = JSON.parse(results.body);
         //console.log('medias ', medias);
-        dataStore.getMediaKeys(req.query.user_id).then((mediaKeys)=> {
-            console.log('m keys --> ',mediaKeys)
-            medias.data.forEach((element)=>  {
-                if(mediaKeys.includes(element.media_key))   {
+        dataStore.getMediaKeys(req.query.user_id).then((mediaKeys) => {
+            console.log('m keys --> ', mediaKeys)
+            medias.data.forEach((element) => {
+                if (mediaKeys.includes(element.media_key)) {
                     mediaData.push(element);
                 }
             })
-            console.log('mediaData ',mediaData);
+            console.log('mediaData ', mediaData);
             res.send(mediaData);
-    
-        })    
+
+        })
     });
 });
 
 router.post("/upload", function (req, res) {
     if (req.files)
-        console.log('-- Media Upload Services -- ', req.files, ' Body ',req.body);
+        console.log('-- Media Upload Services -- ', req.files, ' Body ', req.body);
     let uploadedFile = req.files.File;
     uploadedFile.mv(config.fileStorageDir + uploadedFile.name);
     // cloudStorage.uploadToGCS(uploadedFile.name, uploadedFile.data);
     uploadMedia(uploadedFile).then((media) => {
         uploadMediaLib(media.media_key, uploadedFile.name).then((results) => {
-            updateUserMediaMap(req.body.userId,media.media_key);
-            res.send(results)
+            utils.createCard({ 'mediaKey': media.media_key, 'cardName': 'validate_card', 'websiteURL': 'https://www.twitter.com', 'websiteTitle': 'Twitter' }).then((card) => {
+                console.log('Validatin card created ', card.id)
+                updateUserMediaMap(req.body.userId, media.media_key);
+                res.send(results)
+            }).catch( function(error)   {
+                // Card validation failed
+                res.send(error);
+            });
         });
     });
 });
 
-async function updateUserMediaMap(userId, mediaKey)  {
-    console.log('updateUserMediaMap ',userId,' - ',mediaKey);
-    dataStore.upsertMediaKey(userId,mediaKey);
+async function updateUserMediaMap(userId, mediaKey) {
+    console.log('updateUserMediaMap ', userId, ' - ', mediaKey);
+    dataStore.upsertMediaKey(userId, mediaKey);
 
 }
 
 async function uploadMediaLib(mediaKey, fileName) {
-    return new Promise( function (resolve, reject)  {
+    console.log('uploadMediaLib ', mediaKey, fileName)
+    return new Promise(function (resolve, reject) {
         let options = {
             url: config.adsAccount.adsAPI.mediaLibrary,
             json: true,
-            headers: { "Content-Type": "application/json"},
+            headers: { "Content-Type": "application/json" },
             form: { 'media_key': mediaKey, 'file_name': fileName, 'name': 'Game Cards' }
 
         }
