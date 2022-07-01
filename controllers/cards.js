@@ -5,6 +5,7 @@ const OAuth = require('oauth-request');
 const queryString = require('query-string');
 const axios = require("axios").default;
 const dataStore = require('.././services/dataStore.js');
+const utils = require('.././services/utils.js');
 
 const router = express.Router();
 
@@ -165,8 +166,12 @@ async function createCarouselAxios(media) {
             }
         ]
     });
+    let encodedSignature = utils.getEncodedSignature(data);
+    let auth_header = 'OAuth oauth_consumer_key="' + config.adsAccount.consumerKey + '",oauth_token="' + config.adsAccount.tokenKey + '",oauth_signature_method="HMAC-SHA1",oauth_timestamp="' + encodedSignature.timestamp + '",oauth_nonce="'+ encodedSignature.nonce +'",oauth_version="1.0",';
+    auth_header = auth_header + 'oauth_signature="'+ encodedSignature.encodedSignature + '"';
 
-    let auth_header = 'OAuth oauth_consumer_key=' + config.adsAccount.consumerKey + ',oauth_token=' + config.adsAccount.tokenKey + ',oauth_signature_method="HMAC-SHA1",oauth_timestamp="1656521901",oauth_nonce="ftWGbHtNUdu",oauth_version="1.0",oauth_signature="Ku1UEZuMZKAz4Rh4edwSxOSJzD0%3D"';
+    console.log('auth_header ',auth_header)
+    // "Ku1UEZuMZKAz4Rh4edwSxOSJzD0%3D"';
 
     var axiosConfig = {
         method: 'post',
