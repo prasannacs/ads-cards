@@ -64,6 +64,7 @@ router.post("/upload", function (req, res) {
             utils.createCard({ 'mediaKey': media.media_key, 'cardName': 'validate_card', 'websiteURL': 'https://www.twitter.com', 'websiteTitle': 'Twitter' }).then((card) => {
                 console.log('Validatin card created ', card.id)
                 updateUserMediaMap(req.body.userId, media.media_key);
+                utils.deleteCard(card.id);
                 res.send(results)
             }).catch( function(error)   {
                 // Card validation failed

@@ -15,7 +15,7 @@ var twitterAPI = OAuth({
     }
 });
 
-function getEncodedSignature(adUrl, reqBody) {
+function getEncodedSignature(adUrl, method, reqBody) {
     let timestamp = Math.floor(new Date().getTime() / 1000);
     let nonce = getNonce(7);
     let oauth_signature = {
@@ -23,7 +23,7 @@ function getEncodedSignature(adUrl, reqBody) {
         'nonce': nonce
     }
 
-    var httpMethod = 'POST',
+    var httpMethod = method,
         url = adUrl,
         parameters = {
             oauth_consumer_key: config.adsAccount.consumerKey,
@@ -85,7 +85,7 @@ async function createCard(cardForm) {
 
 async function deleteCard(cardId) {
     let url = config.adsAccount.adsAPI.websiteCards + '/' + cardId;
-    let encodedSignature = getEncodedSignature(url, null);
+    let encodedSignature = getEncodedSignature(url, 'DELETE', null);
     let auth_header = 'OAuth oauth_consumer_key="' + config.adsAccount.consumerKey + '",oauth_token="' + config.adsAccount.tokenKey + '",oauth_signature_method="HMAC-SHA1",oauth_timestamp="' + encodedSignature.timestamp + '",oauth_nonce="'+ encodedSignature.nonce +'",oauth_version="1.0",';
     auth_header = auth_header + 'oauth_signature="'+ encodedSignature.encodedSignature + '"';
 

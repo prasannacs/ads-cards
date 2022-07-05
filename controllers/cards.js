@@ -46,11 +46,11 @@ router.get("/", function (req, res) {
             console.log('m keys --> ', mediaKeys)
             cards.data.forEach((element) => {
                 if (mediaKeys.includes(element.media_key)) {
-                    if( element.name === 'validate_card')  {
+                    // if( element.name === 'validate_card')  {
 
-                    }else{
+                    // }else{
                         cardsData.push(element);
-                    }
+                    // }
                     
                 }
             })
@@ -79,7 +79,12 @@ router.get("/", function (req, res) {
 
 router.delete("/", function (req, res) {
     console.log('-- DELETE Cards Services -- ', req.body.cardId);
-    utils.deleteCard(req.body.cardId);
+    utils.deleteCard(req.body.cardId).then(()=> {
+        res.send('Card deleted');
+    }).catch(function(error)    {
+        res.send('Delete error ');
+        console.log('validation card not deleted')
+    });
 });
 
 router.post("/tweet", function (req, res) {
@@ -168,7 +173,7 @@ async function createCarouselAxios(media) {
             }
         ]
     });
-    let encodedSignature = utils.getEncodedSignature(config.adsAccount.adsAPI.carouselCards, data);
+    let encodedSignature = utils.getEncodedSignature(config.adsAccount.adsAPI.carouselCards, 'POST', data);
     let auth_header = 'OAuth oauth_consumer_key="' + config.adsAccount.consumerKey + '",oauth_token="' + config.adsAccount.tokenKey + '",oauth_signature_method="HMAC-SHA1",oauth_timestamp="' + encodedSignature.timestamp + '",oauth_nonce="'+ encodedSignature.nonce +'",oauth_version="1.0",';
     auth_header = auth_header + 'oauth_signature="'+ encodedSignature.encodedSignature + '"';
 
