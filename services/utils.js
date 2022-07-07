@@ -3,6 +3,14 @@ const config = require('../config.js');
 const OAuth = require('oauth-request');
 const crypto = require('crypto');
 const axios = require("axios").default;
+const Twitter = require("twitter")
+
+const twitterClient = new Twitter({
+    consumer_key: config.adsAccount.consumerKey,
+    consumer_secret: config.adsAccount.consumerSecret,
+    access_token_key: config.adsAccount.tokenKey,
+    access_token_secret: config.adsAccount.tokenSecret
+})
 
 var twitterAPI = OAuth({
     consumer: {
@@ -55,7 +63,7 @@ function getNonce(length) {
 }
 
 async function createCard(cardForm) {
-    console.log('CardForm / Validation ', cardForm.mediaKey , cardForm.cardName)
+    console.log('CardForm / Validation ', cardForm.mediaKey, cardForm.cardName)
     let cardOptions = {
         url: config.adsAccount.adsAPI.websiteCards,
         json: true,
@@ -79,17 +87,68 @@ async function createCard(cardForm) {
             }
         })
     });
-    console.log('== comes here 2');
-
 }
+
+async function initializeMediaUpload(mediaSize, mediaType) {
+    return new Promise(function (resolve, reject) {
+        twitterClient.post("media/upload", {
+            command: "INIT",
+            total_bytes: mediaSize,
+            media_type: mediaType,
+            media_category: 'tweet_gif'
+        }, function (error, data, response) {
+            if (error) {
+                console.log(error)
+                reject(error)
+            } else {
+                resolve(data.media_id_string)
+            }
+        })
+    })
+}
+
+async function appendFileChunk(mediaId, mediaData, segmentId) {
+    return new Promise(function (resolve, reject) {
+        twitterClient.post("media/upload", {
+            command: "APPEND",
+            media_id: mediaId,
+            media_data: mediaData,
+            segment_index: segmentId
+        }, function (error, data, response) {
+            if (error) {
+                console.log(error)
+                reject(error)
+            } else {
+                resolve(mediaId)
+            }
+        })
+    })
+}
+
+async function finalizeUpload(mediaId) {
+    return new Promise(function (resolve, reject) {
+        twitterClient.post("media/upload", {
+            command: "FINALIZE",
+            media_id: mediaId
+        }, function (error, data, response) {
+            if (error) {
+                console.log(error)
+                reject(error)
+            } else {
+                resolve(data)
+            }
+        })
+    })
+}
+
 
 async function deleteCard(cardId) {
     let url = config.adsAccount.adsAPI.websiteCards + '/' + cardId;
     let encodedSignature = getEncodedSignature(url, 'DELETE', null);
-    let auth_header = 'OAuth oauth_consumer_key="' + config.adsAccount.consumerKey + '",oauth_token="' + config.adsAccount.tokenKey + '",oauth_signature_method="HMAC-SHA1",oauth_timestamp="' + encodedSignature.timestamp + '",oauth_nonce="'+ encodedSignature.nonce +'",oauth_version="1.0",';
-    auth_header = auth_header + 'oauth_signature="'+ encodedSignature.encodedSignature + '"';
+    let auth_header = 'OAuth oauth_consumer_key="' + config.adsAccount.consumerKey + '",oauth_token="' + config.adsAccount.tokenKey + '",oauth_signature_method="HMAC-SHA1",oauth_timestamp="' + encodedSignature.timestamp + '",oauth_nonce="' + encodedSignature.nonce + '",oauth_version="1.0",';
+    auth_header = auth_header + 'oauth_signature="' + encodedSignature.encodedSignature + '"';
 
-    console.log('auth_header ',auth_header)
+    console.log('auth_header ', auth_header)
 
     var axiosConfig = {
         method: 'delete',
@@ -101,17 +160,17 @@ async function deleteCard(cardId) {
         // data: data
     };
 
-    return new Promise(function (resolve, reject)   {
+    return new Promise(function (resolve, reject) {
         axios(axiosConfig)
-        .then(function (response) {
-            resolve(response.data);
-        })
-        .catch(function (error) {
-            console.log(error);
-            reject(error);
-        });
+            .then(function (response) {
+                resolve(response.data);
+            })
+            .catch(function (error) {
+                console.log(error);
+                reject(error);
+            });
     });
 
 }
 
-module.exports = { getEncodedSignature, createCard, deleteCard };
+module.exports = { getEncodedSignature, createCard, deleteCard, initializeMediaUpload, appendFileChunk, finalizeUpload };

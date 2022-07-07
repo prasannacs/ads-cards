@@ -110,7 +110,7 @@ router.post("/tweet", function (req, res) {
 
 router.post("/create-card", function (req, res) {
     console.log('-- Create Ads Cards Services -- ', req.body);
-    createCard(req.body).then((card) => {
+    utils.createCard(req.body).then((card) => {
         console.log('card URI ', card.card_uri)
         res.send({ 'card_uri': card.card_uri });
     }).catch(function (error) {
@@ -118,33 +118,6 @@ router.post("/create-card", function (req, res) {
     })
 
 });
-
-async function createCard(cardForm) {
-    console.log('CardForm ', cardForm)
-    let cardOptions = {
-        url: config.adsAccount.adsAPI.websiteCards,
-        json: true,
-        form: { 'name': cardForm.cardName, 'website_title': cardForm.websiteTitle, 'website_url': cardForm.websiteURL, 'media_key': cardForm.mediaKey }
-    }
-
-    twitterAPI.setToken({
-        key: config.adsAccount.tokenKey,
-        secret: config.adsAccount.tokenSecret
-    });
-
-    return new Promise(function (resolve, reject) {
-        twitterAPI.post(cardOptions, function (error, response, results) {
-            if (response.body.errors) {
-                console.log('Twitter error ', response.body.errors);
-                reject(response.body.errors[0]);
-            }
-            if (response.body.data) {
-                console.log('Twitter response ', response.body);
-                resolve(response.body.data);
-            }
-        })
-    });
-}
 
 router.post("/create-carousel", function (req, res) {
     console.log('-- Create Carousel Cards Services -- ', req.body);

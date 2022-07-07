@@ -58,20 +58,29 @@ router.post("/upload", function (req, res) {
         console.log('-- Media Upload Services -- ', req.files, ' Body ', req.body);
     let uploadedFile = req.files.File;
     uploadedFile.mv(config.fileStorageDir + uploadedFile.name);
-    // cloudStorage.uploadToGCS(uploadedFile.name, uploadedFile.data);
-    uploadMedia(uploadedFile).then((media) => {
-        uploadMediaLib(media.media_key, uploadedFile.name).then((results) => {
-            utils.createCard({ 'mediaKey': media.media_key, 'cardName': 'validate_card', 'websiteURL': 'https://www.twitter.com', 'websiteTitle': 'Twitter' }).then((card) => {
-                console.log('Validatin card created ', card.id)
-                updateUserMediaMap(req.body.userId, media.media_key);
-                utils.deleteCard(card.id);
-                res.send(results)
-            }).catch( function(error)   {
-                // Card validation failed
-                res.send(error);
+    // check file extension for video/GIF
+    let fileExt = uploadedFile.name.split(".");
+    if (fileExt[1] === 'mp4' || fileExt[1] === 'mov' || fileExt[1] === 'gif' || fileExt[1] === 'avi') {
+        console.log('Video/GIF file upload');
+        res.send({'message':'Video files are not supported', 'code':'501'});
+        // uploadVideo(uploadedFile);
+    } else {
+        uploadMedia(uploadedFile).then((media) => {
+            uploadMediaLib(media.media_key, uploadedFile.name).then((results) => {
+                utils.createCard({ 'mediaKey': media.media_key, 'cardName': 'validate_card', 'websiteURL': 'https://www.twitter.com', 'websiteTitle': 'Twitter' }).then((card) => {
+                    console.log('Validatin card created ', card.id)
+                    updateUserMediaMap(req.body.userId, media.media_key);
+                    utils.deleteCard(card.id);
+                    res.send(results)
+                }).catch(function (error) {
+                    // Card validation failed
+                    res.send(error);
+                });
             });
+        }).catch(function (error) {
+            console.log('~~~~~ MEDIA upload error ~~~~~ ', error)
         });
-    });
+    }
 });
 
 async function updateUserMediaMap(userId, mediaKey) {
@@ -124,6 +133,24 @@ async function uploadMedia(uploadedFile) {
         })
 
     });
+}
+
+async function uploadVideo(uploadedFile) {
+    let encodedFile = await fs.readFile(config.fileStorageDir + uploadedFile.name, { encoding: 'base64' });
+    utils.initializeMediaUpload(uploadedFile.size, uploadedFile.mimetype).then((mediaId)   =>  {
+        console.log(' INIT Media Id ',mediaId);
+        utils.appendFileChunk(mediaId, encodedFile, 0).then((mediaId) =>   {
+            console.log(' APPEND Media Id ',mediaId);
+            utils.finalizeUpload(mediaId).then((mediaId) =>   {
+                console.log(' FINALIZE Media Id ',mediaId);
+                uploadMediaLib(mediaId, uploadedFile.name).then( (result) =>  {
+                    console.log('Upload video to Media Lib ',result)
+                })
+            })
+        });
+
+    })
+
 }
 
 module.exports = router
