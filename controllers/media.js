@@ -62,15 +62,18 @@ router.post("/upload", function (req, res) {
     let fileExt = uploadedFile.name.split(".");
     if (fileExt[1] === 'mp4' || fileExt[1] === 'mov' || fileExt[1] === 'gif' || fileExt[1] === 'avi') {
         console.log('Video/GIF file upload');
-        res.send({'message':'Video files are not supported', 'code':'501'});
-        // uploadVideo(uploadedFile);
+        // res.send({'message':'Video files are not supported', 'code':'501'});
+        uploadVideo(uploadedFile, req.body.userId).then((result)   =>  {
+            console.log('VIDEO UPLOADED -- SUCCESS');
+            res.send(result);
+        });
     } else {
         uploadMedia(uploadedFile).then((media) => {
             uploadMediaLib(media.media_key, uploadedFile.name).then((results) => {
                 utils.createCard({ 'mediaKey': media.media_key, 'cardName': 'validate_card', 'websiteURL': 'https://www.twitter.com', 'websiteTitle': 'Twitter' }).then((card) => {
-                    console.log('Validatin card created ', card.id)
+                    console.log('Validatin card created ', card.data)
                     updateUserMediaMap(req.body.userId, media.media_key);
-                    utils.deleteCard(card.id);
+                    utils.deleteCard(card.data.id);
                     res.send(results)
                 }).catch(function (error) {
                     // Card validation failed
@@ -101,11 +104,11 @@ async function uploadMediaLib(mediaKey, fileName) {
         }
         twitterAPI.post(options, function (error, response, results) {
             if (error) {
-                console.log('Twitter error ', error);
+                console.log('Twitter uploadMediaLib error ', error);
                 reject(error);
             }
             if (response) {
-                console.log('Twitter response ', response.body);
+                console.log('Twitter uploadMediaLib response ', response.body);
                 resolve(response.body);
             }
         })
@@ -135,20 +138,31 @@ async function uploadMedia(uploadedFile) {
     });
 }
 
-async function uploadVideo(uploadedFile) {
+async function uploadVideo(uploadedFile, userId) {
     let encodedFile = await fs.readFile(config.fileStorageDir + uploadedFile.name, { encoding: 'base64' });
-    utils.initializeMediaUpload(uploadedFile.size, uploadedFile.mimetype).then((mediaId)   =>  {
-        console.log(' INIT Media Id ',mediaId);
-        utils.appendFileChunk(mediaId, encodedFile, 0).then((mediaId) =>   {
-            console.log(' APPEND Media Id ',mediaId);
-            utils.finalizeUpload(mediaId).then((mediaId) =>   {
-                console.log(' FINALIZE Media Id ',mediaId);
-                uploadMediaLib(mediaId, uploadedFile.name).then( (result) =>  {
-                    console.log('Upload video to Media Lib ',result)
+    return new Promise(function (resolve, reject) {
+        utils.initializeMediaUpload(uploadedFile.size, uploadedFile.mimetype).then((mediaId) => {
+            console.log(' INIT Media Id ', mediaId);
+            utils.appendFileChunk(mediaId, encodedFile, 0).then((aMediaId) => {
+                console.log(' APPEND Media Id ', aMediaId);
+                utils.finalizeUpload(aMediaId).then((media) => {
+                    console.log(' FINALIZE Media Id ', media);
+                    utils.sleep(2000);
+                    utils.uploadStatus(media.media_id_string).then((status) => {
+                        console.log('UPLOAD STATUS ', status);
+                        uploadMediaLib(media.media_key, uploadedFile.name).then((result) => {
+                            updateUserMediaMap(userId, media.media_key);
+                            console.log('Upload video to Media Lib ', result)
+                            resolve(result);
+                        })
+                    })
+                }).catch(function (error) {
+                    console.log('FINALIZE ERROR ', error);
+                    reject(error);
                 })
-            })
-        });
+            });
 
+        })
     })
 
 }

@@ -34,54 +34,45 @@ router.get("/", function (req, res) {
     });
     let cardsData = [];
     let adsURL = config.adsAccount.adsAPI.carouselCards;
-    if( req.query.discriminator)    {
-        adsURL = config.adsAccount.adsAPI.websiteCards;
-    }
+    // if( req.query.discriminator)    {
+    //     adsURL = config.adsAccount.adsAPI.websiteCards;
+    // }
     twitterAPI.get(adsURL, function (err, results, tweets) {
-
         let cards = JSON.parse(results.body);
-        //console.log('medias ', medias);
+        // console.log('-----------');
+        // console.log('cards ', cards.data);
+        // console.log('-----------');
         dataStore.getMediaKeys(req.query.user_id).then((mediaKeys) => {
-            if( req.query.discriminator)    {
+            // if( req.query.discriminator)    {
             console.log('m keys --> ', mediaKeys)
             cards.data.forEach((element) => {
-                if (mediaKeys.includes(element.media_key)) {
-                    // if( element.name === 'validate_card')  {
-
-                    // }else{
+                if (element.components[0].media_key != undefined) {
+                    if (mediaKeys.includes(element.components[0].media_key)) {
                         cardsData.push(element);
-                    // }
-                    
-                }
+                    }
+                } 
             })
-            console.log('cardsData ', cardsData);
-            res.send(cardsData);
-        }else {
-            cards.data.forEach((element) => {
-                for(let i=0; i< element.components[0].media_keys.length; i++ ) {
-                    if( mediaKeys.includes(element.components[0].media_keys[i] )  )  {
-                        cardsData.push(element);
-                        break;
+            cards.data.forEach((element)    =>  {
+                if (element.components[0].media_keys != undefined ) {
+                    for(let i=0; i< element.components[0].media_keys.length; i++ ) {
+                        if( mediaKeys.includes(element.components[0].media_keys[i] )  )  {
+                            cardsData.push(element);
+                            break;
+                        }
                     }
                 }
-                // element.components[0].media_keys.forEach((mkey)    =>  {
-                //     if(mediaKeys.includes(mkey))    {
-                //         cardsData.push(element);
-                //     }
-                // })
             })
             console.log('cardsData ', cardsData);
             res.send(cardsData);
-        }
         })
     });
 });
 
 router.delete("/", function (req, res) {
     console.log('-- DELETE Cards Services -- ', req.body.cardId);
-    utils.deleteCard(req.body.cardId).then(()=> {
+    utils.deleteCard(req.body.cardId).then(() => {
         res.send('Card deleted');
-    }).catch(function(error)    {
+    }).catch(function (error) {
         res.send('Delete error ');
         console.log('validation card not deleted')
     });
@@ -109,10 +100,11 @@ router.post("/tweet", function (req, res) {
 })
 
 router.post("/create-card", function (req, res) {
+    req.body.mediaKey = req.body.mediaKey[0];
     console.log('-- Create Ads Cards Services -- ', req.body);
     utils.createCard(req.body).then((card) => {
-        console.log('card URI ', card.card_uri)
-        res.send({ 'card_uri': card.card_uri });
+        console.log('card URI ', card.data.card_uri)
+        res.send({ 'card_uri': card.data.card_uri });
     }).catch(function (error) {
         res.send({ 'error': error })
     })
@@ -147,10 +139,10 @@ async function createCarouselAxios(media) {
         ]
     });
     let encodedSignature = utils.getEncodedSignature(config.adsAccount.adsAPI.carouselCards, 'POST', data);
-    let auth_header = 'OAuth oauth_consumer_key="' + config.adsAccount.consumerKey + '",oauth_token="' + config.adsAccount.tokenKey + '",oauth_signature_method="HMAC-SHA1",oauth_timestamp="' + encodedSignature.timestamp + '",oauth_nonce="'+ encodedSignature.nonce +'",oauth_version="1.0",';
-    auth_header = auth_header + 'oauth_signature="'+ encodedSignature.encodedSignature + '"';
+    let auth_header = 'OAuth oauth_consumer_key="' + config.adsAccount.consumerKey + '",oauth_token="' + config.adsAccount.tokenKey + '",oauth_signature_method="HMAC-SHA1",oauth_timestamp="' + encodedSignature.timestamp + '",oauth_nonce="' + encodedSignature.nonce + '",oauth_version="1.0",';
+    auth_header = auth_header + 'oauth_signature="' + encodedSignature.encodedSignature + '"';
 
-    console.log('auth_header ',auth_header)
+    console.log('auth_header ', auth_header)
     // "Ku1UEZuMZKAz4Rh4edwSxOSJzD0%3D"';
 
     var axiosConfig = {
@@ -163,15 +155,15 @@ async function createCarouselAxios(media) {
         data: data
     };
 
-    return new Promise(function (resolve, reject)   {
+    return new Promise(function (resolve, reject) {
         axios(axiosConfig)
-        .then(function (response) {
-            resolve(response.data);
-        })
-        .catch(function (error) {
-            console.log(error);
-            reject(error);
-        });
+            .then(function (response) {
+                resolve(response.data);
+            })
+            .catch(function (error) {
+                console.log(error);
+                reject(error);
+            });
     });
 
 }

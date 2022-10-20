@@ -62,31 +62,80 @@ function getNonce(length) {
     return result;
 }
 
+// async function createCard(cardForm) {
+//     console.log('CardForm / Validation ', cardForm.mediaKey, cardForm.cardName)
+//     let cardOptions = {
+//         url: config.adsAccount.adsAPI.websiteCards,
+//         json: true,
+//         form: { 'name': cardForm.cardName, 'website_title': cardForm.websiteTitle, 'website_url': cardForm.websiteURL, 'media_key': cardForm.mediaKey }
+//     }
+
+//     twitterAPI.setToken({
+//         key: config.adsAccount.tokenKey,
+//         secret: config.adsAccount.tokenSecret
+//     });
+
+//     return new Promise(function (resolve, reject) {
+//         twitterAPI.post(cardOptions, function (error, response, results) {
+//             if (response.body.errors) {
+//                 console.log('Twitter error ', response.body.errors);
+//                 reject(response.body.errors[0]);
+//             }
+//             if (response.body.data) {
+//                 console.log('Twitter response ', response.body);
+//                 resolve(response.body.data);
+//             }
+//         })
+//     });
+// }
+
 async function createCard(cardForm) {
     console.log('CardForm / Validation ', cardForm.mediaKey, cardForm.cardName)
-    let cardOptions = {
-        url: config.adsAccount.adsAPI.websiteCards,
-        json: true,
-        form: { 'name': cardForm.cardName, 'website_title': cardForm.websiteTitle, 'website_url': cardForm.websiteURL, 'media_key': cardForm.mediaKey }
-    }
-
-    twitterAPI.setToken({
-        key: config.adsAccount.tokenKey,
-        secret: config.adsAccount.tokenSecret
+    var data = JSON.stringify({
+        "name": cardForm.cardName,
+        "components": [
+            {
+                "type": "MEDIA",
+                "media_key": cardForm.mediaKey,
+            },
+            {
+                "type": "DETAILS",
+                "title": cardForm.websiteTitle,
+                "destination": {
+                    "type": "WEBSITE",
+                    "url": cardForm.websiteURL
+                }
+            }
+        ]
     });
+    let encodedSignature = getEncodedSignature(config.adsAccount.adsAPI.carouselCards, 'POST', data);
+    let auth_header = 'OAuth oauth_consumer_key="' + config.adsAccount.consumerKey + '",oauth_token="' + config.adsAccount.tokenKey + '",oauth_signature_method="HMAC-SHA1",oauth_timestamp="' + encodedSignature.timestamp + '",oauth_nonce="'+ encodedSignature.nonce +'",oauth_version="1.0",';
+    auth_header = auth_header + 'oauth_signature="'+ encodedSignature.encodedSignature + '"';
 
-    return new Promise(function (resolve, reject) {
-        twitterAPI.post(cardOptions, function (error, response, results) {
-            if (response.body.errors) {
-                console.log('Twitter error ', response.body.errors);
-                reject(response.body.errors[0]);
-            }
-            if (response.body.data) {
-                console.log('Twitter response ', response.body);
-                resolve(response.body.data);
-            }
+    console.log('auth_header ',auth_header)
+    // "Ku1UEZuMZKAz4Rh4edwSxOSJzD0%3D"';
+
+    var axiosConfig = {
+        method: 'post',
+        url: config.adsAccount.adsAPI.carouselCards,
+        headers: {
+            'Authorization': auth_header,
+            'Content-Type': 'application/json'
+        },
+        data: data
+    };
+
+    return new Promise(function (resolve, reject)   {
+        axios(axiosConfig)
+        .then(function (response) {
+            resolve(response.data);
         })
+        .catch(function (error) {
+            console.log(error);
+            reject(error);
+        });
     });
+
 }
 
 async function initializeMediaUpload(mediaSize, mediaType) {
@@ -95,7 +144,7 @@ async function initializeMediaUpload(mediaSize, mediaType) {
             command: "INIT",
             total_bytes: mediaSize,
             media_type: mediaType,
-            media_category: 'tweet_gif'
+            media_category: 'tweet_video'
         }, function (error, data, response) {
             if (error) {
                 console.log(error)
@@ -141,9 +190,25 @@ async function finalizeUpload(mediaId) {
     })
 }
 
+async function uploadStatus(mediaId) {
+    return new Promise(function (resolve, reject) {
+        twitterClient.get("media/upload", {
+            command: "STATUS",
+            media_id: mediaId
+        }, function (error, data, response) {
+            if (error) {
+                console.log('uploadStatus error: ',error)
+                reject(error)
+            } else {
+                resolve(data)
+            }
+        })
+    })
+}
+
 
 async function deleteCard(cardId) {
-    let url = config.adsAccount.adsAPI.websiteCards + '/' + cardId;
+    let url = config.adsAccount.adsAPI.carouselCards + '/' + cardId;
     let encodedSignature = getEncodedSignature(url, 'DELETE', null);
     let auth_header = 'OAuth oauth_consumer_key="' + config.adsAccount.consumerKey + '",oauth_token="' + config.adsAccount.tokenKey + '",oauth_signature_method="HMAC-SHA1",oauth_timestamp="' + encodedSignature.timestamp + '",oauth_nonce="' + encodedSignature.nonce + '",oauth_version="1.0",';
     auth_header = auth_header + 'oauth_signature="' + encodedSignature.encodedSignature + '"';
@@ -173,4 +238,12 @@ async function deleteCard(cardId) {
 
 }
 
-module.exports = { getEncodedSignature, createCard, deleteCard, initializeMediaUpload, appendFileChunk, finalizeUpload };
+function sleep(milliseconds) {
+    const date = Date.now();
+    let currentDate = null;
+    do {
+        currentDate = Date.now();
+    } while (currentDate - date < milliseconds);
+}
+
+module.exports = { sleep, getEncodedSignature, createCard, deleteCard, initializeMediaUpload, appendFileChunk, finalizeUpload, uploadStatus };
